@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Hashicorp.Vault.Extensions;
+using Hashicorp.Vault.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -48,11 +50,10 @@ public class Program
             .ConfigureServices((context, services) =>
             {
                 services
-                   .AddOptions<VaultOptions>()
-                   .BindConfiguration(VaultOptions.SectionName)
-                   .ValidateDataAnnotations()
-                   .ValidateOnStart();
+                    .AddSecretManager(context.Configuration)
+                    .AddHostedService<VaultService>();
             });
+
     private static Serilog.Core.Logger CreateBootstrapLogger()
     {
         var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
