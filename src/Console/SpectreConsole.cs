@@ -14,11 +14,11 @@ internal static class SpectreConsole
 
     public static void WriteBanner()
     {
-        var rule = new Rule("[bold white]Interactive Chat[/]");
+        var rule = new Rule("[bold white]Key/Value[/]");
         rule.Justification = Justify.Left;
         AnsiConsole.Write(rule);
 
-        AnsiConsole.Write(new Text("Type your message and press Enter.", SpectreConsole.BannerStyle));
+        AnsiConsole.Write(new Text("Type your secret key and press Enter.", SpectreConsole.BannerStyle));
         AnsiConsole.WriteLine();
         AnsiConsole.Write(new Text("Type 'exit' or 'quit' to close the application.", SpectreConsole.BannerStyle));
         AnsiConsole.WriteLine();

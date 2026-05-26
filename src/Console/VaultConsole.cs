@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
+using System.Text;
 
 namespace Hashicorp.Vault.Console;
 
@@ -60,21 +61,35 @@ internal class VaultConsole
                 }
 
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                logger.LogInformation("Console chat loop cancelled.");
-                break;
-            }
             catch (Exception ex)
             {
                 AnsiConsole.WriteLine();
                 AnsiConsole.Write(new Markup("[bold springgreen3]System > [/]"));
-                AnsiConsole.Write(new Text("Sorry, something went wrong.", SpectreConsole.SystemStyle));
+                AnsiConsole.Write(new Text(GetAllExceptionMessages(ex), SpectreConsole.InfoStyle));
                 AnsiConsole.WriteLine();
-
-                logger.LogError(ex, "Unhandled exception in chat loop.");
             }
         }
+    }
+
+    private static string GetAllExceptionMessages(Exception exception)
+    {
+        var builder = new StringBuilder();
+        var current = exception;
+        var index = 0;
+
+        while (current is not null)
+        {
+            if (index > 0)
+            {
+                builder.Append(" --> ");
+            }
+
+            builder.Append(current.Message);
+            current = current.InnerException;
+            index++;
+        }
+
+        return builder.ToString();
     }
 }
 

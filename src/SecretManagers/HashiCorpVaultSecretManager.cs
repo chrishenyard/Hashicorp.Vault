@@ -1,4 +1,5 @@
 ﻿using Hashicorp.Vault.Options;
+using Microsoft.Extensions.Hosting;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods;
 using VaultSharp.V1.AuthMethods.AppRole;
@@ -10,12 +11,15 @@ namespace Hashicorp.Vault.SecretManagers;
 public sealed class HashiCorpVaultSecretManager : ISecretManager
 {
     private readonly HashiCorpVaultOptions _options;
+    private readonly IHostEnvironment _environment;
     private readonly Lazy<Task<IVaultClient>> _client;
 
     public HashiCorpVaultSecretManager(
-        Microsoft.Extensions.Options.IOptions<HashiCorpVaultOptions> options)
+        Microsoft.Extensions.Options.IOptions<HashiCorpVaultOptions> options,
+        IHostEnvironment environment)
     {
         _options = options.Value;
+        _environment = environment;
         _client = new Lazy<Task<IVaultClient>>(CreateClientAsync);
     }
 
@@ -63,6 +67,36 @@ public sealed class HashiCorpVaultSecretManager : ISecretManager
                 $"Unsupported Vault auth method: {_options.AuthMethod}")
         };
 
+        if (_environment.IsDevelopment())
+            return GetDevelopmentClient(authMethod);
+
+        return GetClient(authMethod);
+    }
+
+    private VaultClient GetDevelopmentClient(IAuthMethodInfo authMethod)
+    {
+        var httpClientHandler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
+        };
+
+        var settings = new VaultClientSettings(
+            _options.Address,
+            authMethod);
+
+        settings.PostProcessHttpClientHandlerAction = handler =>
+        {
+            if (handler is HttpClientHandler clientHandler)
+            {
+                clientHandler.ServerCertificateCustomValidationCallback = httpClientHandler.ServerCertificateCustomValidationCallback;
+            }
+        };
+
+        return new VaultClient(settings);
+    }
+
+    private IVaultClient GetClient(IAuthMethodInfo authMethod)
+    {
         var settings = new VaultClientSettings(
             _options.Address,
             authMethod);

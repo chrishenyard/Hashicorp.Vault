@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Hashicorp.Vault": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
