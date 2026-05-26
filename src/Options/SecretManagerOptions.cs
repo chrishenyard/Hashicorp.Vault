@@ -21,4 +21,6 @@ public sealed class HashiCorpVaultOptions
 
     public string MountPoint { get; set; } = "secret";
     public string SecretPath { get; set; } = "";
+
+    public bool AllowInvalidServerCertificate { get; set; } = false;
 }

@@ -1,5 +1,6 @@
 ﻿using Hashicorp.Vault.Options;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods;
 using VaultSharp.V1.AuthMethods.AppRole;
@@ -12,50 +13,86 @@ public sealed class HashiCorpVaultSecretManager : ISecretManager
 {
     private readonly HashiCorpVaultOptions _options;
     private readonly IHostEnvironment _environment;
-    private readonly Lazy<Task<IVaultClient>> _client;
+    private readonly SemaphoreSlim _clientLock = new(1, 1);
+    private Task<IVaultClient>? _clientTask;
 
     public HashiCorpVaultSecretManager(
-        Microsoft.Extensions.Options.IOptions<HashiCorpVaultOptions> options,
+        IOptions<HashiCorpVaultOptions> options,
         IHostEnvironment environment)
     {
-        _options = options.Value;
-        _environment = environment;
-        _client = new Lazy<Task<IVaultClient>>(CreateClientAsync);
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+
+        ValidateOptions(_options);
     }
 
     public async Task<string?> GetSecretAsync(
         string key,
         CancellationToken cancellationToken = default)
     {
-        var secrets = await GetSecretsAsync(cancellationToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-        return secrets.TryGetValue(key, out var value)
-            ? value
-            : null;
+        var secrets = await GetSecretsAsync(cancellationToken);
+        return secrets.TryGetValue(key, out var value) ? value : null;
     }
 
     public async Task<IReadOnlyDictionary<string, string>> GetSecretsAsync(
         CancellationToken cancellationToken = default)
     {
-        var client = await _client.Value;
+        var client = await GetOrCreateClientAsync(cancellationToken);
 
         var result = await client.V1.Secrets.KeyValue.V2.ReadSecretAsync(
             path: _options.SecretPath,
             mountPoint: _options.MountPoint);
 
-        return result.Data.Data
-            .ToDictionary(
-                x => x.Key,
-                x => x.Value?.ToString() ?? "");
+        var data = result?.Data?.Data;
+        if (data is null || data.Count == 0)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return data.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value?.ToString() ?? string.Empty,
+            StringComparer.OrdinalIgnoreCase);
     }
 
-    private async Task<IVaultClient> CreateClientAsync()
+    private async Task<IVaultClient> GetOrCreateClientAsync(CancellationToken cancellationToken)
     {
-        IAuthMethodInfo authMethod = _options.AuthMethod.ToLowerInvariant() switch
+        if (_clientTask is { IsCompletedSuccessfully: true })
+        {
+            return _clientTask.Result;
+        }
+
+        await _clientLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_clientTask is null || _clientTask.IsFaulted || _clientTask.IsCanceled)
+            {
+                _clientTask = CreateClientAsync(cancellationToken);
+            }
+
+            return await _clientTask;
+        }
+        finally
+        {
+            _clientLock.Release();
+        }
+    }
+
+    private async Task<IVaultClient> CreateClientAsync(CancellationToken cancellationToken)
+    {
+        var authMethod = await CreateAuthMethodInfoAsync(cancellationToken);
+        return CreateVaultClient(authMethod);
+    }
+
+    private async Task<IAuthMethodInfo> CreateAuthMethodInfoAsync(CancellationToken cancellationToken)
+    {
+        return _options.AuthMethod.ToLowerInvariant() switch
         {
             "kubernetes" => new KubernetesAuthMethodInfo(
                 roleName: _options.RoleName,
-                jwt: await File.ReadAllTextAsync(_options.KubernetesJwtPath)),
+                jwt: await File.ReadAllTextAsync(_options.KubernetesJwtPath, cancellationToken)),
 
             "approle" => new AppRoleAuthMethodInfo(
                 roleId: _options.RoleId,
@@ -66,41 +103,60 @@ public sealed class HashiCorpVaultSecretManager : ISecretManager
             _ => throw new InvalidOperationException(
                 $"Unsupported Vault auth method: {_options.AuthMethod}")
         };
-
-        if (_environment.IsDevelopment())
-            return GetDevelopmentClient(authMethod);
-
-        return GetClient(authMethod);
     }
 
-    private VaultClient GetDevelopmentClient(IAuthMethodInfo authMethod)
+    private VaultClient CreateVaultClient(IAuthMethodInfo authMethod)
     {
-        var httpClientHandler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
-        };
+        var settings = new VaultClientSettings(_options.Address, authMethod);
 
-        var settings = new VaultClientSettings(
-            _options.Address,
-            authMethod);
-
-        settings.PostProcessHttpClientHandlerAction = handler =>
+        if (_environment.IsDevelopment() && _options.AllowInvalidServerCertificate)
         {
-            if (handler is HttpClientHandler clientHandler)
+            settings.PostProcessHttpClientHandlerAction = handler =>
             {
-                clientHandler.ServerCertificateCustomValidationCallback = httpClientHandler.ServerCertificateCustomValidationCallback;
-            }
-        };
+                if (handler is HttpClientHandler clientHandler)
+                {
+                    clientHandler.ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                }
+            };
+        }
 
         return new VaultClient(settings);
     }
 
-    private IVaultClient GetClient(IAuthMethodInfo authMethod)
+    private static void ValidateOptions(HashiCorpVaultOptions options)
     {
-        var settings = new VaultClientSettings(
-            _options.Address,
-            authMethod);
+        if (string.IsNullOrWhiteSpace(options.Address))
+        {
+            throw new InvalidOperationException("SecretManager:HashiCorpVault:Address is required.");
+        }
 
-        return new VaultClient(settings);
+        if (string.IsNullOrWhiteSpace(options.MountPoint))
+        {
+            throw new InvalidOperationException("SecretManager:HashiCorpVault:MountPoint is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.SecretPath))
+        {
+            throw new InvalidOperationException("SecretManager:HashiCorpVault:SecretPath is required.");
+        }
+
+        switch (options.AuthMethod.ToLowerInvariant())
+        {
+            case "token":
+                if (string.IsNullOrWhiteSpace(options.Token))
+                    throw new InvalidOperationException("Token auth requires SecretManager:HashiCorpVault:Token.");
+                break;
+
+            case "approle":
+                if (string.IsNullOrWhiteSpace(options.RoleId) || string.IsNullOrWhiteSpace(options.SecretId))
+                    throw new InvalidOperationException("AppRole auth requires RoleId and SecretId.");
+                break;
+
+            case "kubernetes":
+                if (string.IsNullOrWhiteSpace(options.RoleName) || string.IsNullOrWhiteSpace(options.KubernetesJwtPath))
+                    throw new InvalidOperationException("Kubernetes auth requires RoleName and KubernetesJwtPath.");
+                break;
+        }
     }
 }
