@@ -2,7 +2,7 @@ services:
   hashicorp.vault:
     image: ${DOCKER_REGISTRY-}hashicorp.vault:latest
     extra_hosts:
-      - "vault.localhost:192.168.1.50"
+      - "vault.localhost:host-gateway"
     build:
       context: ./src
       dockerfile: Hashicorp.Vault/Dockerfile

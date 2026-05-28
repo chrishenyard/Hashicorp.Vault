@@ -31,7 +31,7 @@ public class VaultBackgroundService(
                 AnsiConsole.WriteLine();
                 AnsiConsole.Write(new Markup("[bold cyan]Secret Key > [/]"));
 
-                var userInput = Console.ReadLine();
+                var userInput = await System.Console.In.ReadLineAsync(stoppingToken);
 
                 if (string.IsNullOrWhiteSpace(userInput))
                 {
