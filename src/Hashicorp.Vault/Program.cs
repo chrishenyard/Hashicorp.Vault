@@ -3,7 +3,7 @@ using Hashicorp.Vault.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace Hashicorp.Vault;
 
@@ -11,33 +11,21 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        Log.Logger = CreateBootstrapLogger();
-
-        try
-        {
-            Log.Information("Starting console host");
-
-            using IHost host = CreateHostBuilder(args).Build();
-            await host.RunAsync();
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "Console host terminated unexpectedly");
-        }
-        finally
-        {
-            await Log.CloseAndFlushAsync();
-        }
+        using var host = CreateHostBuilder(args).Build();
+        await host.RunAsync();
     }
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
-            .UseSerilog((context, services, loggerConfiguration) =>
+            .ConfigureLogging(logging =>
             {
-                loggerConfiguration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .ReadFrom.Services(services)
-                    .Enrich.FromLogContext();
+                logging.ClearProviders();
+                logging.AddSimpleConsole(options =>
+                {
+                    options.SingleLine = true;
+                    options.TimestampFormat = "HH:mm:ss ";
+                });
+                logging.SetMinimumLevel(LogLevel.Information);
             })
             .ConfigureAppConfiguration((context, config) =>
             {
@@ -51,21 +39,8 @@ public class Program
             {
                 services
                     .AddSecretManager(context.Configuration)
-                    .AddHostedService<VaultService>();
+                    .AddHostedService<VaultBackgroundService>();
             });
-
-    private static Serilog.Core.Logger CreateBootstrapLogger()
-    {
-        var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
-            ?? Environments.Production;
-
-        var configuration = new ConfigurationBuilder();
-        AddSharedConfiguration(configuration, environmentName, includeCommandLine: false, args: null);
-
-        return new LoggerConfiguration()
-            .ReadFrom.Configuration(configuration.Build())
-            .CreateLogger();
-    }
 
     private static void AddSharedConfiguration(
         IConfigurationBuilder config,

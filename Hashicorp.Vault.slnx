@@ -3,5 +3,8 @@
     <File Path="src/Directory.Packages.props" />
     <File Path="README.md" />
   </Folder>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
   <Project Path="src/Hashicorp.Vault/Hashicorp.Vault.csproj" />
 </Solution>

@@ -4,29 +4,34 @@ using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Text;
 
-namespace Hashicorp.Vault.Console;
+namespace Hashicorp.Vault.Services;
 
-internal class VaultConsole
+public class VaultBackgroundService(
+    ISecretManager secretManager,
+    IHostApplicationLifetime lifeTime,
+    ILogger<VaultBackgroundService> logger) : BackgroundService
 {
-    public static async Task ExecuteAsync(
-        ISecretManager secretManager,
-        IHostApplicationLifetime lifetime,
-        ILogger logger,
-        CancellationToken cancellationToken)
+    private readonly ISecretManager _secretManager = secretManager;
+    private readonly IHostApplicationLifetime _lifeTime = lifeTime;
+    private readonly ILogger<VaultBackgroundService> _logger = logger;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        stoppingToken.Register(() => _logger.LogInformation("Vault Background Service - Stopping (thread {ThreadId})...", Thread.CurrentThread.ManagedThreadId));
+        _logger.LogInformation("Vault Background Service - Starting (thread {ThreadId})...", Thread.CurrentThread.ManagedThreadId);
 
         SpectreConsole.DisplayTitle();
         SpectreConsole.WriteBanner();
         AnsiConsole.WriteLine();
 
-        while (!cancellationToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 AnsiConsole.WriteLine();
                 AnsiConsole.Write(new Markup("[bold cyan]Secret Key > [/]"));
 
-                var userInput = await System.Console.In.ReadLineAsync(cancellationToken);
+                var userInput = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(userInput))
                 {
@@ -37,13 +42,13 @@ internal class VaultConsole
 
                 if (SpectreConsole.IsExitCommand(userInput))
                 {
-                    logger.LogInformation("User requested application shutdown.");
+                    _logger.LogInformation("User requested application shutdown.");
                     AnsiConsole.MarkupLine("[grey]Goodbye.[/]");
-                    lifetime.StopApplication();
+                    _lifeTime.StopApplication();
                     break;
                 }
 
-                var secretValue = await secretManager.GetSecretAsync(userInput, cancellationToken);
+                var secretValue = await _secretManager.GetSecretAsync(userInput, stoppingToken);
 
                 if (secretValue != null)
                 {
@@ -59,7 +64,10 @@ internal class VaultConsole
                     AnsiConsole.Write(new Text("Secret not found.", SpectreConsole.SystemStyle));
                     AnsiConsole.WriteLine();
                 }
-
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogInformation("Vault Background Service - Task.Delay was cancelled (thread {ThreadId}).", Thread.CurrentThread.ManagedThreadId);
             }
             catch (Exception ex)
             {
@@ -91,5 +99,10 @@ internal class VaultConsole
 
         return builder.ToString();
     }
-}
 
+    public override Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Vault console service is stopping.");
+        return base.StopAsync(cancellationToken);
+    }
+}

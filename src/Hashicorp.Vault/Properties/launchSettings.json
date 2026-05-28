@@ -7,7 +7,10 @@
       }
     },
     "Container (Dockerfile)": {
-      "commandName": "Docker"
+      "commandName": "Docker",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Docker"
+      }
     }
   }
 }
