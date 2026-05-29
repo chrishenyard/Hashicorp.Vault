@@ -9,22 +9,14 @@ using VaultSharp.V1.AuthMethods.Token;
 
 namespace Hashicorp.Vault.SecretManagers;
 
-public sealed class HashiCorpVaultSecretManager : ISecretManager
+public sealed class HashiCorpVaultSecretManager(
+    IOptions<HashiCorpVaultOptions> options,
+    IHostEnvironment environment) : ISecretManager
 {
-    private readonly HashiCorpVaultOptions _options;
-    private readonly IHostEnvironment _environment;
+    private readonly HashiCorpVaultOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+    private readonly IHostEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     private readonly SemaphoreSlim _clientLock = new(1, 1);
     private Task<IVaultClient>? _clientTask;
-
-    public HashiCorpVaultSecretManager(
-        IOptions<HashiCorpVaultOptions> options,
-        IHostEnvironment environment)
-    {
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-
-        ValidateOptions(_options);
-    }
 
     public async Task<string?> GetSecretAsync(
         string key,
@@ -122,41 +114,5 @@ public sealed class HashiCorpVaultSecretManager : ISecretManager
         }
 
         return new VaultClient(settings);
-    }
-
-    private static void ValidateOptions(HashiCorpVaultOptions options)
-    {
-        if (string.IsNullOrWhiteSpace(options.Address))
-        {
-            throw new InvalidOperationException("SecretManager:HashiCorpVault:Address is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(options.MountPoint))
-        {
-            throw new InvalidOperationException("SecretManager:HashiCorpVault:MountPoint is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(options.SecretPath))
-        {
-            throw new InvalidOperationException("SecretManager:HashiCorpVault:SecretPath is required.");
-        }
-
-        switch (options.AuthMethod.ToLowerInvariant())
-        {
-            case "token":
-                if (string.IsNullOrWhiteSpace(options.Token))
-                    throw new InvalidOperationException("Token auth requires SecretManager:HashiCorpVault:Token.");
-                break;
-
-            case "approle":
-                if (string.IsNullOrWhiteSpace(options.RoleId) || string.IsNullOrWhiteSpace(options.SecretId))
-                    throw new InvalidOperationException("AppRole auth requires RoleId and SecretId.");
-                break;
-
-            case "kubernetes":
-                if (string.IsNullOrWhiteSpace(options.RoleName) || string.IsNullOrWhiteSpace(options.KubernetesJwtPath))
-                    throw new InvalidOperationException("Kubernetes auth requires RoleName and KubernetesJwtPath.");
-                break;
-        }
     }
 }

@@ -1,7 +1,9 @@
-﻿using Hashicorp.Vault.Options;
+﻿using FluentValidation;
+using Hashicorp.Vault.Options;
 using Hashicorp.Vault.SecretManagers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Hashicorp.Vault.Extensions;
 
@@ -11,13 +13,24 @@ public static class SecretManagerServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<SecretManagerOptions>(
-            configuration.GetSection("SecretManager"));
+        var serviceProvider = services.BuildServiceProvider();
 
-        services.Configure<HashiCorpVaultOptions>(
-            configuration.GetSection("SecretManager:HashiCorpVault"));
+        services.AddOptions<HashiCorpVaultOptions>()
+            .Bind(configuration.GetSection("HashiCorpVault"))
+            .Validate(options =>
+            {
+                var validator = serviceProvider.GetRequiredService<IValidator<HashiCorpVaultOptions>>();
+                var result = validator.Validate(options);
+                if (!result.IsValid)
+                {
+                    var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
+                    throw new InvalidOperationException($"Invalid HashiCorpVaultOptions: {errors}");
+                }
+                return true;
+            });
 
-        var provider = configuration["SecretManager:Provider"];
+        var options = serviceProvider.GetRequiredService<IOptions<HashiCorpVaultOptions>>().Value;
+        var provider = options.Provider;
 
         switch (provider?.ToLowerInvariant())
         {

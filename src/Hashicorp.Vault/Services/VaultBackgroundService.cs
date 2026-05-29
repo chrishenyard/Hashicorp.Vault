@@ -9,13 +9,13 @@ namespace Hashicorp.Vault.Services;
 public class VaultBackgroundService(
     ISecretManager secretManager,
     IHostApplicationLifetime lifeTime,
-    ILogger<VaultBackgroundService> logger)
+    ILogger<VaultBackgroundService> logger) : BackgroundService
 {
     private readonly ISecretManager _secretManager = secretManager;
     private readonly IHostApplicationLifetime _lifeTime = lifeTime;
     private readonly ILogger<VaultBackgroundService> _logger = logger;
 
-    public async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         stoppingToken.Register(() => _logger.LogInformation("Vault Background Service - Stopping (thread {ThreadId})...", Thread.CurrentThread.ManagedThreadId));
         _logger.LogInformation("Vault Background Service - Starting (thread {ThreadId})...", Thread.CurrentThread.ManagedThreadId);
@@ -31,7 +31,7 @@ public class VaultBackgroundService(
                 AnsiConsole.WriteLine();
                 AnsiConsole.Write(new Markup("[bold cyan]Secret Key > [/]"));
 
-                var userInput = Console.ReadLine();
+                var userInput = await System.Console.In.ReadLineAsync(stoppingToken);
 
                 if (string.IsNullOrWhiteSpace(userInput))
                 {
@@ -98,5 +98,11 @@ public class VaultBackgroundService(
         }
 
         return builder.ToString();
+    }
+
+    public override Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Vault console service is stopping.");
+        return base.StopAsync(cancellationToken);
     }
 }

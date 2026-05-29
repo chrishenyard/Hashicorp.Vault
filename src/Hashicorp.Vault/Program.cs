@@ -1,5 +1,6 @@
-﻿using Hashicorp.Vault.Extensions;
-using Hashicorp.Vault.SecretManagers;
+﻿using FluentValidation;
+using Hashicorp.Vault.Extensions;
+using Hashicorp.Vault.Options;
 using Hashicorp.Vault.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,30 +11,10 @@ namespace Hashicorp.Vault;
 
 public class Program
 {
-    private static readonly AutoResetEvent ShutdownEvent = new(false);
-
     public static async Task Main(string[] args)
     {
-        var cancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = cancellationTokenSource.Token;
-
         using var host = CreateHostBuilder(args).Build();
-
-        var secretManager = host.Services.GetRequiredService<ISecretManager>();
-        var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
-        ILogger<VaultBackgroundService> logger = host.Services.GetRequiredService<ILogger<VaultBackgroundService>>();
-        var vaultService = new VaultBackgroundService(secretManager, lifetime, logger);
-
-        await vaultService.ExecuteAsync(cancellationToken);
-
-        Console.CancelKeyPress += (sender, eventArgs) =>
-        {
-            cancellationTokenSource.Cancel();
-            eventArgs.Cancel = true;
-            ShutdownEvent.Set();
-        };
-
-        ShutdownEvent.WaitOne();
+        await host.RunAsync();
     }
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -59,7 +40,9 @@ public class Program
             .ConfigureServices((context, services) =>
             {
                 services
-                    .AddSecretManager(context.Configuration);
+                    .AddScoped<IValidator<HashiCorpVaultOptions>, HashiCorpVaultOptionsValidator>()
+                    .AddSecretManager(context.Configuration)
+                    .AddHostedService<VaultBackgroundService>();
             });
 
     private static void AddSharedConfiguration(
