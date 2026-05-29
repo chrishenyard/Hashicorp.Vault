@@ -1,6 +1,6 @@
 docker compose build
 
-docker run -it `
+docker run -it --rm `
   --add-host "vault.localhost:host-gateway" `
   -e DOTNET_ENVIRONMENT=Development `
   -e ASPNETCORE_ENVIRONMENT=Development `
