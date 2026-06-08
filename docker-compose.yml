@@ -1,12 +1,24 @@
 services:
   hashicorp.vault:
     image: ${DOCKER_REGISTRY-}hashicorp.vault:latest
-    extra_hosts:
-      - "vault.localhost:host-gateway"
+    container_name: hashicorp.vault
+    # extra_hosts:
+    #   - "vault.localhost:host-gateway"
+    network_mode: "host"
+    stdin_open: true
+    tty: true
     build:
       context: ./src
       dockerfile: Hashicorp.Vault/Dockerfile
     environment:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_ENVIRONMENT: Development
-    user: "1654:1654"
+
+    user: "0:0"
+
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+    security_opt:
+      - label=disable

@@ -27,7 +27,7 @@ public class Program
                     options.SingleLine = true;
                     options.TimestampFormat = "HH:mm:ss ";
                 });
-                logging.SetMinimumLevel(LogLevel.Information);
+                logging.SetMinimumLevel(LogLevel.Debug);
             })
             .ConfigureAppConfiguration((context, config) =>
             {

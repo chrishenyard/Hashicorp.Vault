@@ -3,7 +3,6 @@ using Hashicorp.Vault.Options;
 using Hashicorp.Vault.SecretManagers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace Hashicorp.Vault.Extensions;
 
@@ -11,12 +10,12 @@ public static class SecretManagerServiceCollectionExtensions
 {
     public static IServiceCollection AddSecretManager(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration config)
     {
         var serviceProvider = services.BuildServiceProvider();
 
         services.AddOptions<HashiCorpVaultOptions>()
-            .Bind(configuration.GetSection("HashiCorpVault"))
+            .Bind(config.GetSection("HashiCorpVaultOptions"))
             .Validate(options =>
             {
                 var validator = serviceProvider.GetRequiredService<IValidator<HashiCorpVaultOptions>>();
@@ -29,7 +28,9 @@ public static class SecretManagerServiceCollectionExtensions
                 return true;
             });
 
-        var options = serviceProvider.GetRequiredService<IOptions<HashiCorpVaultOptions>>().Value;
+        var options = config
+            .GetSection("HashiCorpVaultOptions")
+            .Get<HashiCorpVaultOptions>()!;
         var provider = options.Provider;
 
         switch (provider?.ToLowerInvariant())

@@ -111,6 +111,14 @@ public sealed class HashiCorpVaultSecretManager(
                         HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
                 }
             };
+
+            if (!string.IsNullOrWhiteSpace(_options.HostHeader))
+            {
+                settings.BeforeApiRequestAction = (client, request) =>
+                {
+                    request.Headers.Add("Host", _options.HostHeader);
+                };
+            }
         }
 
         return new VaultClient(settings);

@@ -1,7 +1,6 @@
-docker compose build
+podman compose build
 
-docker run -it --rm `
-  --add-host "vault.localhost:host-gateway" `
+podman run -it --rm `
   -e DOTNET_ENVIRONMENT=Development `
   -e ASPNETCORE_ENVIRONMENT=Development `
   -v C:\Users\chenyard\AppData\Roaming\Microsoft\UserSecrets:/home/app/.microsoft/usersecrets:ro `

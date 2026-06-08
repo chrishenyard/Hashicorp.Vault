@@ -16,6 +16,15 @@ ports:
     port: 443
     nodePort: 30001
 
+securityContext:
+  capabilities:
+    drop: [ALL]
+    add: [NET_BIND_SERVICE]
+  readOnlyRootFilesystem: true
+  runAsGroup: 0
+  runAsNonRoot: false
+  runAsUser: 0
+  
 # We will route with Gateway API instead.
 ingressClass:
   enabled: false

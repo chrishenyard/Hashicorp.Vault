@@ -4,16 +4,16 @@ namespace Hashicorp.Vault.Options;
 
 public sealed class HashiCorpVaultOptions
 {
-    public string Provider { get; set; } = "HashiCorpVault";
+    public string Provider { get; set; } = "";
     public string Address { get; set; } = "";
-    public string AuthMethod { get; set; } = "Token";
+    public string HostHeader { get; set; } = "";
+    public string AuthMethod { get; set; } = "";
     public string Token { get; set; } = "";
     public string RoleName { get; set; } = "";
-    public string KubernetesJwtPath { get; set; } =
-        "/var/run/secrets/kubernetes.io/serviceaccount/token";
+    public string KubernetesJwtPath { get; set; } = "";
     public string RoleId { get; set; } = "";
     public string SecretId { get; set; } = "";
-    public string MountPoint { get; set; } = "secret";
+    public string MountPoint { get; set; } = "";
     public string SecretPath { get; set; } = "";
     public bool AllowInvalidServerCertificate { get; set; } = false;
 }
