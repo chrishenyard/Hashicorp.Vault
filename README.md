@@ -90,7 +90,7 @@ EOF
 - helm repo add traefik https://traefik.github.io/charts
 - helm repo update
 
-## 1) Generate a Self‑Signed Certificate Valid for *.docker.localhost
+## Generate a Self‑Signed Certificate Valid for *.docker.localhost
 - openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=*.docker.localhost"
 - kubectl create secret tls local-selfsigned-tls --cert=tls.crt --key=tls.key --namespace traefik
 - kubectl create secret tls local-selfsigned-tls --cert=tls.crt --key=tls.key --namespace vault
