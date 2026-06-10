@@ -4,6 +4,13 @@ import urllib.request
 import urllib.error
 
 
+class VaultApiError(RuntimeError):
+    def __init__(self, status_code: int, message: str, details: object | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.details = details
+
+
 class VaultClient:
     def __init__(self, address: str, token: str):
         self.address = address.rstrip("/")
@@ -37,7 +44,22 @@ class VaultClient:
                 return json.loads(body) if body else {}
         except urllib.error.HTTPError as ex:
             body = ex.read().decode("utf-8")
-            raise RuntimeError(f"Vault API error {ex.code}: {body}") from ex
+            message = f"Vault API error {ex.code}"
+            details: object | None = None
+
+            try:
+                details = json.loads(body) if body else None
+
+                if isinstance(details, dict):
+                    errors = details.get("errors")
+                    if isinstance(errors, list) and errors:
+                        error_text = "; ".join(str(item) for item in errors)
+                        message = f"{message}: {error_text}"
+            except json.JSONDecodeError:
+                if body.strip():
+                    message = f"{message}: {body.strip()}"
+
+            raise VaultApiError(ex.code, message, details) from ex
 
     def list_secrets(self, mount: str, secret_path: str = "") -> dict[str, object]:
         api_path = f"{mount}/data/{secret_path}".rstrip("/")
@@ -50,4 +72,7 @@ class VaultClient:
 
     def write_secret(self, mount: str, secret_path: str, values: dict) -> None:
         self.request("POST", f"{mount}/data/{secret_path}", {"data": values})
+
+    def delete_secret(self, mount: str, secret_path: str) -> None:
+        self.request("DELETE", f"{mount}/data/{secret_path}")
 

@@ -9,7 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pyvault.main",
-            "args": ["list", "--mount", "kv-v2", "--path", "demo-app/config"],
+            "args": ["delete", "--mount", "kv-v2", "--path", "demo-app"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "justMyCode": false

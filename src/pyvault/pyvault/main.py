@@ -1,9 +1,10 @@
 import argparse
+import json
 import os
 import sys
 
-from .client import VaultClient
-from .commands import list_cmd, add_cmd, update_cmd
+from .client import VaultApiError, VaultClient
+from .commands import list_cmd, add_cmd, update_cmd, delete_cmd
 
 
 def main():
@@ -26,6 +27,7 @@ def main():
     list_cmd.register(subparsers)
     add_cmd.register(subparsers)
     update_cmd.register(subparsers)
+    delete_cmd.register(subparsers)
 
     args = parser.parse_args()
 
@@ -37,10 +39,14 @@ def main():
 
     try:
         args.func(args, client)
+    except VaultApiError as ex:
+        print(str(ex), file=sys.stderr)
+        if ex.details is not None:
+            print(json.dumps(ex.details, indent=2), file=sys.stderr)
+        sys.exit(1)
     except Exception as ex:
         print(ex, file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
