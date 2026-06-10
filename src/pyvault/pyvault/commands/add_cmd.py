@@ -1,7 +1,7 @@
 def register(subparsers):
     parser = subparsers.add_parser("add", help="Add a new secret")
-    parser.add_argument("--mount", required=True)
-    parser.add_argument("--path", required=True)
+    parser.add_argument("--mount", default="kv-v2", required=True, help="KV v2 mount path")
+    parser.add_argument("--path", required=False, default="demo-app/config", help="Secret path (e.g. 'app/config')")
     parser.add_argument("--data", action="append", required=True, help="key=value")
     parser.set_defaults(func=run)
 

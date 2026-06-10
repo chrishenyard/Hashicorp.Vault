@@ -39,10 +39,10 @@ class VaultClient:
             body = ex.read().decode("utf-8")
             raise RuntimeError(f"Vault API error {ex.code}: {body}") from ex
 
-    def list_secrets(self, mount: str, secret_path: str = "") -> list[str]:
-        api_path = f"{mount}/metadata/{secret_path}".rstrip("/")
-        result = self.request("LIST", api_path)
-        return result.get("data", {}).get("keys", [])
+    def list_secrets(self, mount: str, secret_path: str = "") -> dict[str, object]:
+        api_path = f"{mount}/data/{secret_path}".rstrip("/")
+        result = self.request("GET", api_path)
+        return result.get("data", {}).get("data", {})
 
     def read_secret(self, mount: str, secret_path: str) -> dict:
         result = self.request("GET", f"{mount}/data/{secret_path}")
