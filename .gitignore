@@ -14,6 +14,13 @@
 *.sln.docstates
 tls.*
 vtls.*
+.venv/
+*.egg-info/
+dist/
+build/
+.vscode/
+__pycache__/
+*.pyc
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
