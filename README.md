@@ -53,7 +53,7 @@ Save keys and root token
 ## Add App Policy
 - vault policy write demo-app-policy - <<EOF
 path "kv-v2/*" {
-capabilities = ["create", "read", "update", "list"]
+capabilities = ["create", "read", "update", "list", "delete"]
 }
 EOF
 
