@@ -1,33 +1,17 @@
-﻿using FluentValidation;
-using Hashicorp.Vault.Options;
+﻿using Hashicorp.Vault.Options;
 using Hashicorp.Vault.SecretManagers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Hashicorp.Vault.Extensions;
 
-public static class SecretManagerServiceCollectionExtensions
+public static class SecretManagerService
 {
     public static IServiceCollection AddSecretManager(
         this IServiceCollection services,
         IConfiguration config)
     {
-        var serviceProvider = services.BuildServiceProvider();
-
-        services.AddOptions<HashiCorpVaultOptions>()
-            .Bind(config.GetSection("HashiCorpVaultOptions"))
-            .Validate(options =>
-            {
-                var validator = serviceProvider.GetRequiredService<IValidator<HashiCorpVaultOptions>>();
-                var result = validator.Validate(options);
-                if (!result.IsValid)
-                {
-                    var errors = string.Join("; ", result.Errors.Select(e => e.ErrorMessage));
-                    throw new InvalidOperationException($"Invalid HashiCorpVaultOptions: {errors}");
-                }
-                return true;
-            });
-
         var options = config
             .GetSection("HashiCorpVaultOptions")
             .Get<HashiCorpVaultOptions>()!;
@@ -51,5 +35,22 @@ public static class SecretManagerServiceCollectionExtensions
         }
 
         return services;
+    }
+
+    public static async Task MapOptions(IServiceProvider serviceProvider)
+    {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+
+        var secretManager = serviceProvider.GetRequiredService<ISecretManager>();
+        var options = serviceProvider.GetRequiredService<IOptions<HashiCorpVaultOptions>>().Value;
+        var secrets = await secretManager.GetSecretsAsync();
+        var type = options.GetType();
+
+        foreach (var pair in secrets)
+        {
+            var prop = type.GetProperty(pair.Key)
+                ?? throw new InvalidOperationException($"Property '{pair.Key}' not found on type '{type.FullName}'.");
+            prop.SetValue(options, pair.Value);
+        }
     }
 }
