@@ -3,19 +3,19 @@ using Hashicorp.Vault.SecretManagers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Reflection;
 
 namespace Hashicorp.Vault.Extensions;
 
-public static class SecretManagerService
+public static class SecretManagerExtensions
 {
     public static IServiceCollection AddSecretManager(
         this IServiceCollection services,
         IConfiguration config)
     {
-        var options = config
+        var provider = config
             .GetSection("HashiCorpVaultOptions")
-            .Get<HashiCorpVaultOptions>()!;
-        var provider = options.Provider;
+            .Get<HashiCorpVaultOptions>()!.Provider;
 
         switch (provider?.ToLowerInvariant())
         {
@@ -37,19 +37,24 @@ public static class SecretManagerService
         return services;
     }
 
-    public static async Task MapOptions(IServiceProvider serviceProvider)
+    public static async Task MapOptions<T>(IServiceProvider serviceProvider) where T : class
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
 
         var secretManager = serviceProvider.GetRequiredService<ISecretManager>();
-        var options = serviceProvider.GetRequiredService<IOptions<HashiCorpVaultOptions>>().Value;
+        var options = serviceProvider.GetRequiredService<IOptions<T>>().Value;
         var secrets = await secretManager.GetSecretsAsync();
-        var type = options.GetType();
+        
+        var type = typeof(T);
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .ToDictionary(p => p.Name);
 
         foreach (var pair in secrets)
         {
-            var prop = type.GetProperty(pair.Key)
-                ?? throw new InvalidOperationException($"Property '{pair.Key}' not found on type '{type.FullName}'.");
+            if (!properties.TryGetValue(pair.Key, out var prop))
+            {
+                throw new InvalidOperationException($"Property '{pair.Key}' not found on type '{type.FullName}'.");
+            }
             prop.SetValue(options, pair.Value);
         }
     }

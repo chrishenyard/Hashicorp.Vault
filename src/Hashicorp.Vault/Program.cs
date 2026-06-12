@@ -1,11 +1,14 @@
 ﻿using FluentValidation;
 using Hashicorp.Vault.Extensions;
 using Hashicorp.Vault.Options;
-using Hashicorp.Vault.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Spectre.Console;
+using System.Reflection;
+using static Hashicorp.Vault.Extensions.SecretManagerExtensions;
 
 namespace Hashicorp.Vault;
 
@@ -16,8 +19,9 @@ public class Program
         try
         {
             using var host = CreateHostBuilder(args);
-            await SecretManagerService.MapOptions(host.Services);
-            await host.RunAsync();
+            await MapOptions<HashiCorpVaultOptions>(host.Services);
+            var options = host.Services.GetRequiredService<IOptions<HashiCorpVaultOptions>>().Value;
+            DisplayOptions(options);
         }
         catch (Exception ex)
         {
@@ -25,6 +29,26 @@ public class Program
         }
 
         Console.ReadKey();
+    }
+
+    private static void DisplayOptions(HashiCorpVaultOptions options)
+    {
+        AnsiConsole.Write(new FigletText("Vault").Centered().Color(Color.Gold1));
+
+        var table = new Table()
+            .RoundedBorder()
+            .BorderColor(Color.Gold1);
+
+        table.AddColumn("[bold]Key[/]");
+        table.AddColumn("[bold]Value[/]");
+
+        foreach (var prop in typeof(HashiCorpVaultOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var value = prop.GetValue(options)?.ToString() ?? "null";
+            table.AddRow(new Markup($"[bold]{prop.Name}[/]"), new Markup($"[gold1]{value}[/]"));
+        }
+
+        AnsiConsole.Write(table);
     }
 
     private static IHost CreateHostBuilder(string[] args)
@@ -52,8 +76,7 @@ public class Program
             {
                 services
                     .AddScoped<IValidator<HashiCorpVaultOptions>, HashiCorpVaultOptionsValidator>()
-                    .AddSecretManager(context.Configuration)
-                    .AddHostedService<VaultBackgroundService>();
+                    .AddSecretManager(context.Configuration);
 
                 services.AddOptions<HashiCorpVaultOptions>()
                     .Bind(context.Configuration.GetSection("HashiCorpVaultOptions"))
