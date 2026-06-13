@@ -1,6 +1,6 @@
-podman compose build
+docker compose build
 
-podman run -it --rm `
+docker run -it --rm `
   -e DOTNET_ENVIRONMENT=Development `
   -e ASPNETCORE_ENVIRONMENT=Development `
   -v C:\Users\chenyard\AppData\Roaming\Microsoft\UserSecrets:/home/app/.microsoft/usersecrets:ro `

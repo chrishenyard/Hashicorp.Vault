@@ -2,9 +2,9 @@ services:
   hashicorp.vault:
     image: ${DOCKER_REGISTRY-}hashicorp.vault:latest
     container_name: hashicorp.vault
-    extra_hosts:
-      - "vault.localhost:host-gateway"
-    network_mode: "host"
+    # extra_hosts:
+    #   - "vault.localhost:192.168.68.51"
+    # network_mode: "host"
     stdin_open: true
     tty: true
     build:

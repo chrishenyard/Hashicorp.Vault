@@ -19,6 +19,11 @@ public class Program
         try
         {
             using var host = CreateHostBuilder(args);
+
+            // Test direct HTTP call to Vault API to verify connectivity and certificate handling
+            //var vaultHttpClient = host.Services.GetRequiredService<VaultHttpClient>();
+            //var vaultResponse = await vaultHttpClient.GetSecretAsync("");
+
             await MapOptions<HashiCorpVaultOptions>(host.Services);
             var options = host.Services.GetRequiredService<IOptions<HashiCorpVaultOptions>>().Value;
             DisplayOptions(options);
@@ -92,7 +97,21 @@ public class Program
                         }
                         return true;
                     });
+
+                if (context.HostingEnvironment.IsDevelopment())
+                {
+                    services.AddHttpClient<VaultHttpClient>(client =>
+                    {
+                        client.BaseAddress = new Uri("https://vault.localhost");
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback =
+                            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                    });
+                }
             })
+
             .Build();
 
         return host;
