@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
-using Hashicorp.Vault.Extensions;
-using Hashicorp.Vault.Options;
+using Hashicorp.Vault.Package.Extensions;
+using Hashicorp.Vault.Package.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Spectre.Console;
 using System.Reflection;
-using static Hashicorp.Vault.Extensions.SecretManagerExtensions;
+using static Hashicorp.Vault.Package.Extensions.SecretManagerExtensions;
 
 namespace Hashicorp.Vault;
 
