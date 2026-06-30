@@ -1,7 +1,7 @@
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultConnection
 metadata:
-  name: default
+  name: demo-app-vault-connection
   namespace: demo-app
 spec:
   address: http://vault.vault.svc.cluster.local:8200

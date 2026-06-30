@@ -1,5 +1,5 @@
 ## Requirements
-kubectl
+k
 helm
 docker desktop
 openssl
@@ -15,25 +15,25 @@ Create Kubernetes cluster in docker
 - helm search repo hashicorp/vault --versions
 
 ## Install Gateway CRDs
-- kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
+- k apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
 
 ## Install HashiCorp Vault and Secrets Operator
 - helm install --version 0.32.0 vault hashicorp/vault -n vault --wait
 - helm install --version 1.4.0 vault-secrets-operator hashicorp/vault-secrets-operator -n vault-secrets-operator --wait
 
 ## Init Vault
-- kubectl exec -ti vault-0 -n vault -- sh
+- k exec -ti vault-0 -n vault -- sh
 - vault operator init
 
 Save keys and root token
 
 ## Initialize Vault With Key Threshold
-- kubectl exec -ti vault-0 -n vault -- vault operator unseal # ... Unseal Key 1
-- kubectl exec -ti vault-0 -n vault -- vault operator unseal # ... Unseal Key 2
-- kubectl exec -ti vault-0 -n vault -- vault operator unseal # ... Unseal Key 3
+- k exec -ti vault-0 -n vault -- vault operator unseal # ... Unseal Key 1
+- k exec -ti vault-0 -n vault -- vault operator unseal # ... Unseal Key 2
+- k exec -ti vault-0 -n vault -- vault operator unseal # ... Unseal Key 3
 
 ## Vault Login and Enable Secrets and Kubernetes Auth
-- kubectl exec -ti vault-0 -n vault -- vault login # ... use the root token listed in the unseal output
+- k exec -ti vault-0 -n vault -- vault login # ... use the root token listed in the unseal output
 - vault secrets enable kv-v2
 - vault auth enable kubernetes
 - vault write auth/kubernetes/config \
@@ -69,9 +69,9 @@ EOF
 ## Add Kubernetes Role
 - vault write auth/kubernetes/role/demo-app-role \
   bound_service_account_names=default \
-  bound_service_account_namespaces=demo-app \
+  bound_service_account_namespaces=demo-app,hashicorp-vault-api \
   policies=default,demo-app-policy \
-  audience=vault \
+  audience=https://kubernetes.default.svc.cluster.local \
   ttl=30d \
   max_ttl=30d
 
@@ -86,21 +86,30 @@ EOF
 - vault write auth/approle/login role_id="" secret_id=""
 
 ## Setup Traefik
-- kubectl create namespace traefik
+- k create namespace traefik
 - helm repo add traefik https://traefik.github.io/charts
 - helm repo update
 
 ## Generate a Self‑Signed Certificate Valid for *.docker.localhost
 - openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=*.docker.localhost"
-- kubectl create secret tls local-selfsigned-tls --cert=tls.crt --key=tls.key --namespace traefik
-- kubectl create secret tls local-selfsigned-tls --cert=tls.crt --key=tls.key --namespace vault
+- k create secret tls local-selfsigned-tls --cert=vault-localhost.crt --key=vault-localhost.key --namespace traefik
+- k create secret tls local-selfsigned-tls --cert=vault-localhost.crt --key=vault-localhost.key --namespace vault
 
 ## Install Traefik
 - helm install traefik traefik/traefik --namespace traefik --values traefik-values.yml --wait
 
 ## Apply Manifests
-- kubectl apply -f ./vault-httproute.yml
-- kubectl apply -f vault-connection.yml
-- kubectl apply -f vault-auth.yml
-- kubectl apply -f kv-secret.yml
-- kubectl apply -f deployment.yml
+- k apply -f ./vault-httproute.yml
+- k apply -f vault-connection.yml
+- k apply -f vault-auth.yml
+- k apply -f kv-secret.yml
+- k apply -f deployment.yml
+
+## CA for localhost
+- openssl genrsa -out localhost.key 4096
+- openssl req -x509 -new -nodes -key localhost.key -sha256 -days 3650 -out localhost.crt -subj "/CN=Local Development CA"
+- openssl genrsa -out vault-localhost.key 2048
+- openssl req -new -key vault-localhost.key -out vault-localhost.csr -subj "/CN=vault.localhost"
+- openssl x509 -req -in vault-localhost.csr -CA localhost.crt -CAkey localhost.key -CAcreateserial -out vault-localhost.crt -days 825 -sha256 -extfile vault-localhost.ext
+- Import-Certificate -FilePath C:\certs\localhost\localhost.crt -CertStoreLocation Cert:\LocalMachine\Root
+- k create secret generic hashicorp-vault-api-tls --from-file=aspnetapp.pfx="${env:APPDATA}\ASP.NET\Https\aspnetapp.pfx" -n hashicorp-vault-api
