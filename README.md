@@ -1,3 +1,33 @@
+# Hashicorp.Vault
+
+`Hashicorp.Vault` is a .NET 10 console application for securely retrieving application secrets from HashiCorp Vault and presenting them through an interactive command-line experience.
+
+## What this software provides
+
+- A simple interactive console for querying secrets by key.
+- Integration with HashiCorp Vault KV v2 secret storage.
+- Multiple Vault authentication strategies:
+  - AppRole
+  - Token
+  - Kubernetes
+- Centralized options-based configuration for Vault connection and auth settings.
+- Environment-aware behavior for development and non-development execution.
+- Structured hosting model using .NET generic host and dependency injection.
+- Console logging for visibility into runtime behavior.
+- Extensible secret-manager abstraction so providers can be swapped or expanded over time.
+
+## Core capabilities
+
+- Connects to Vault using configured auth method.
+- Reads secrets from a configured mount point and secret path.
+- Resolves individual secret values by key.
+- Handles and surfaces nested exception messages for easier diagnostics.
+- Supports secure secret input via .NET user secrets and environment configuration sources.
+
+## Intended usage
+
+This project is intended for local development workflows, secret-access validation, and as a reference implementation for secure secret retrieval patterns in .NET applications that integrate with HashiCorp Vault.
+
 ## Requirements
 k
 helm
