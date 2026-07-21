@@ -6,7 +6,7 @@ metadata:
 spec:
   method: kubernetes
   mount: kubernetes
-  vaultConnectionRef: default
+  vaultConnectionRef: demo-app-vault-connection
   kubernetes:
     role: demo-app-role
     serviceAccount: default
