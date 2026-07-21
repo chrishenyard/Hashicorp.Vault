@@ -4,8 +4,7 @@ import os
 import sys
 
 from .client import VaultApiError, VaultClient
-from .commands import list_cmd, add_cmd, update_cmd, delete_cmd
-
+from .commands import list_cmd, add_cmd, update_cmd, delete_cmd, env_cmd
 
 def main():
     parser = argparse.ArgumentParser(prog="pyvault")
@@ -28,6 +27,7 @@ def main():
     add_cmd.register(subparsers)
     update_cmd.register(subparsers)
     delete_cmd.register(subparsers)
+    env_cmd.register(subparsers)
 
     args = parser.parse_args()
 
