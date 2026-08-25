@@ -1,7 +1,7 @@
 import json
 import ssl
-import urllib.request
 import urllib.error
+import urllib.request
 
 
 class VaultApiError(RuntimeError):

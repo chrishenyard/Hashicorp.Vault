@@ -4,7 +4,8 @@ import os
 import sys
 
 from .client import VaultApiError, VaultClient
-from .commands import list_cmd, add_cmd, update_cmd, delete_cmd, env_cmd
+from .commands import add_cmd, delete_cmd, env_cmd, list_cmd, update_cmd
+
 
 def main():
     parser = argparse.ArgumentParser(prog="pyvault")
@@ -43,10 +44,7 @@ def main():
         print(str(ex), file=sys.stderr)
         if ex.details is not None:
             print(json.dumps(ex.details, indent=2), file=sys.stderr)
-        sys.exit(1)
-    except Exception as ex:
-        print(ex, file=sys.stderr)
-        sys.exit(1)
+        raise SystemExit(1) from ex
 
 if __name__ == "__main__":
     main()

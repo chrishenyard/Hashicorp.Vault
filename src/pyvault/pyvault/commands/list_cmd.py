@@ -1,5 +1,6 @@
 from ..output import format_table
 
+
 def register(subparsers):
     parser = subparsers.add_parser("list", help="List all secrets")
     parser.add_argument("--mount", default="kv-v2", required=False, help="KV v2 mount path")
