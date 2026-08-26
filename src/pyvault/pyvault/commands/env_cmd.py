@@ -10,5 +10,5 @@ def run(args, client):
     # Export secrets as environment variables in the format KEY=VALUE to the current shell
     for key, value in secrets.items():
         escaped_value = str(value).replace("'", "'\\''")
-        print(f"export {key.upper()}='{escaped_value}'")
+        print(f"export {key.upper()}={escaped_value}")
 
